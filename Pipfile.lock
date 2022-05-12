@@ -481,6 +481,7 @@
             ],
             "markers": "python_version >= '3.7'",
             "version": "==3.0.1"
+<<<<<<< HEAD
         },
         "zipp": {
             "hashes": [
@@ -489,6 +490,8 @@
             ],
             "markers": "python_version >= '3.7'",
             "version": "==3.8.0"
+=======
+>>>>>>> 7b023960885d7535754c96386f7bac277604eff3
         }
     },
     "develop": {}
