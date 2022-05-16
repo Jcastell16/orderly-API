@@ -9,7 +9,7 @@ from flask_jwt_extended import JWTManager, create_access_token, get_jwt_identity
 from flask_cors import CORS
 from utils import APIException, generate_sitemap
 from admin import setup_admin
-from models import db, User, Profile
+from models import db, User, Profile, Project
 #from models import Person
 
 app = Flask(__name__)
@@ -77,12 +77,13 @@ def register_user():
         else:
             return jsonify("User wasn't successfully create"), 401
 
-@app.route('/login', methods=['GET'])
+@app.route('/login', methods=['POST'])
 def handle_login():
     email = request.json.get("email", None)
     password = request.json.get("password", None)
     if email is not None and password is not None:
         user = User.query.filter_by(email=email, password=password).one_or_none()
+        print(user)
         if user is not None:
             create_token = create_access_token(identity=user.id)
             return jsonify({
@@ -98,6 +99,22 @@ def handle_login():
         return jsonify({
             "msg": "error"
         }),400
+
+@app.route('/newproject', methods=['POST'])
+@jwt_required()
+def new_proyect():  
+    curent_user= get_jwt_identity()
+    body = request.get_json()
+    if not body.get("name", "members","description", "finish_date", "status", "rol", "goals" ):
+        return jsonify({
+            "msg":"Something happen, try again"
+        }), 400
+    else: 
+        newProyect = Project(name=body["name"], user_id = curent_user, members=body["members"], description=body["description"], finish_date=body["finish_date"], status=body["status"], goals=body["goals"], rol=body["rol"])
+        db.session.add(newProyect)
+        db.session.commit()
+        return jsonify("New project has been created"),200
+
 # this only runs if `$ python src/main.py` is executed
 if __name__ == '__main__':
     PORT = int(os.environ.get('PORT', 3000))
