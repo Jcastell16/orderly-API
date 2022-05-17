@@ -54,7 +54,8 @@ def register_user():
     if name is None:
         return jsonify("Please provide a valid name."), 400  
     if lastname is None:
-        return jsonify("Please provide a valid lastname."), 400    
+        return jsonify("Please provide a valid lastname."), 400 
+
     user = User.query.filter_by(email=email).first()
     if user:
         return jsonify("User already exists."), 401
@@ -102,19 +103,26 @@ def handle_login():
 
 @app.route('/newproject', methods=['POST'])
 @jwt_required()
-def new_proyect():  
-    curent_user= get_jwt_identity()
-    body = request.get_json()
-    if not body.get("name", "members","description", "finish_date", "status", "rol", "goals" ):
-        return jsonify({
-            "msg":"Something happen, try again"
-        }), 400
-    else: 
-        newProyect = Project(name=body["name"], user_id = curent_user, members=body["members"], description=body["description"], finish_date=body["finish_date"], status=body["status"], goals=body["goals"], rol=body["rol"])
-        db.session.add(newProyect)
-        db.session.commit()
-        return jsonify("New project has been created"),200
+def new_project():  
+    name = request.json.get("name", None)
+    start_date = request.json.get("start_date")
+    due_date = request.json.get("due_date")
+    status = request.json.get("status")
+    description = request.json.get("description")
+    email = request.json.get("email")
+    rol = request.json.get("rol")
+    if name is None:
+        return jsonify("Please provide a valid name."), 400
+    user_id= get_jwt_identity()
+    newProject = Project()
+    newProject.user_id = user_id
+    newProject.name = name
+    newProject.start_date= start_date
+    newProject.due_date= due_date
+    newProject.status= status
+    newProject.description = description
 
+    
 # this only runs if `$ python src/main.py` is executed
 if __name__ == '__main__':
     PORT = int(os.environ.get('PORT', 3000))
