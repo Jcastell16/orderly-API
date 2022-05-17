@@ -1,7 +1,22 @@
+from tabnanny import check
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import backref
-
+from enum import Enum
 db = SQLAlchemy()
+
+class Roles(Enum):
+    ADMINISTRATOR = "Administrator"
+    USER = "User"
+    OTHER = "Other"
+
+class Gender(Enum):
+    HOMBRE = "Hombre"
+    MUJER = "Mujer"
+
+class Priority(Enum):
+    HIGHT = "Alta"
+    MEDIUM = "Media"
+    LOW = "Baja"
 
 ## --> Users <-- ##
 class User(db.Model):
@@ -25,25 +40,21 @@ class User(db.Model):
 class Profile(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    name = db.Column(db.String(50), nullable=False)
-    lastname = db.Column(db.String(50), nullable=False)
+    fullname = db.Column(db.String(150), nullable=False)
     description = db.Column(db.String(250))
-    departamento = db.Column(db.String(50))
-    photo = db.Column(db.String(200))
+    photo = db.Column(db.String(250))
+    gender = db.Column(db.Enum(Gender), nullable=False)
     user = db.relationship("User", back_populates="profile")
     
     def __repr__(self):
-        return '<Profile: %r>' % self.name
+        return '<Profile: %r>' % self.fullname
 
     def serialize(self):
         return {
             "user_id": self.user_id,
-            "name": self.name,
-            "lastname": self.lastname,
+            "fullname": self.fullname,
             "description": self.description,
-            "email": self.email,
-            "rol": self.rol,
-            "departamento": self.departamento,
+            "gender": self.gender,
             "photo": self.photo,
         }
 
@@ -51,13 +62,12 @@ class Profile(db.Model):
 class Project(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    name = db.Column(db.String(50), nullable=False)
-    members = db.Column(db.String(50))
+    name = db.Column(db.String(150), nullable=False)
     description = db.Column(db.String(250))
-    finish_date = db.Column(db.Date)
+    due_date = db.Column(db.Date)
+    start_date = db.Column(db.Date)
     status = db.Column(db.Boolean, default=True)
-    rol = db.Column(db.String(50)) 
-    goals = db.Column(db.String(50))
+    
     task = db.relationship("Task", backref="project", uselist=True)
 
 
@@ -70,9 +80,27 @@ class Project(db.Model):
             "name": self.name,
             "members": self.members,
             "description": self.description,
-            "finish_date": self.finish_date,
-            "status": self.status,
-            "goals": self.goals
+            "due_date": self.due_date,
+            "start_date": self.start_date,
+            "rol": self.rol,
+            "status": self.status
+        }
+
+## --> Members <-- ##
+class Members(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    rol = db.Column(db.Enum(Roles), nullable=False)
+
+    def __repr__(self):
+        return '<Members: %r>' % self.user_id
+
+    def serialize(self):
+        return {
+            "user_id": self.user_id,
+            "project_id": self.project_id,
+            "rol": self.rol
         }
 
 ## --> Task <-- ##
@@ -81,6 +109,12 @@ class Task(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
     name = db.Column(db.String(50), nullable=False)
+    description = db.Column(db.String(250))
+    check_in = db.Column(db.Boolean, default=False)
+    due_date = db.Column(db.Date)
+    start_date = db.Column(db.Date)
+    members = db.Column(db.String(250), db.ForeignKey('members.id'))
+    priority = db.Column(db.Enum(Priority), nullable=False)
     subtask = db.relationship("Subtask", backref="task", uselist=True)
 
     def __repr__(self):
@@ -90,17 +124,24 @@ class Task(db.Model):
         return {
             "user_id": self.user_id,
             "project_id": self.project_id,
-            "name": self.name
+            "name": self.name, 
+            "description": self.description,
+            "check_in": self.check_in,
+            "due_date": self.due_date,
+            "start_date": self.start_date,
+            "members": self.members,
+            "priority": self.priority,
         }
 
 ## --> Subtask <-- ##
 class Subtask(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    members = db.Column(db.Integer, db.ForeignKey('members.id'))
     task_id = db.Column(db.Integer, db.ForeignKey('task.id'), nullable=False)
     name = db.Column(db.String(50), nullable=False)
     description = db.Column(db.String(250))
-    finish_date = db.Column(db.Date)
+    due_date = db.Column(db.Date)
+    start_date = db.Column(db.Date)
 
     def __repr__(self):
         return '<Subtask: %r>' % self.name
