@@ -33,8 +33,9 @@ class User(db.Model):
     members = db.relationship("Members", backref="user", uselist=True)
     profile = db.relationship("Profile", back_populates="user", uselist=False)
     project = db.relationship("Project", backref="user", uselist=True)
+    task = db.relationship("Task", backref="user", uselist=True)
 
-    def _repr_(self):
+    def repr(self):
         return '<User: %r>' % self.id, self.email
 
     def serialize(self):
@@ -54,7 +55,7 @@ class Profile(db.Model):
     gender = db.Column(db.Enum(Gender))
     user = db.relationship("User", back_populates="profile")
     
-    def _repr_(self):
+    def repr(self):
         return '<Profile: %r>' % self.id, self.name
 
     def serialize(self):
@@ -76,7 +77,7 @@ class Members(db.Model):
     nature_id = db.Column(db.Integer, nullable=False)
     rol = db.Column(db.Enum(Roles))
 
-    def _repr_(self):
+    def repr(self):
         return '<Members: %r>' % self.id
 
     def serialize(self):
@@ -101,7 +102,7 @@ class Project(db.Model):
     task = db.relationship("Task", backref="project", uselist=True)
 
 
-    def _repr_(self):
+    def repr(self):
         return '<Project: %r>' % self.id, self.name
 
     def serialize(self):
@@ -122,7 +123,7 @@ class Columntask(db.Model):
     name = db.Column(db.String(50))
     task = db.relationship("Task", backref="columntask", uselist=True)
 
-    def _repr_(self):
+    def repr(self):
         return '<Columntask: %r>' % self.id, self.name
 
     def serialize(self):
@@ -146,12 +147,13 @@ class Task(db.Model):
     priority = db.Column(db.Enum(Priority))
     members = db.relationship("Members", backref="task", uselist=True)
 
-    def _repr_(self):
+    def repr(self):
         return '<Task: %r>' % self.id, self.name
 
     def serialize(self):
         return {
             "id": self.id,
+            "user_id": self.user_id,
             "project_id": self.project_id,
             "columntask_id": self.columntask_id,
             "members_id": self.members_id,
