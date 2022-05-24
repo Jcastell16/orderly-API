@@ -88,6 +88,7 @@ class Task(db.Model):
 
     def serialize(self):
         return {
+            "task_id": self.id,
             "user_id": self.user_id,
             "project_id": self.project_id,
             "name": self.name

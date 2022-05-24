@@ -9,7 +9,7 @@ from flask_jwt_extended import JWTManager, create_access_token, get_jwt_identity
 from flask_cors import CORS
 from utils import APIException, generate_sitemap
 from admin import setup_admin
-from models import db, User, Profile
+from models import Task, db, User, Profile
 #from models import Person
 
 app = Flask(__name__)
@@ -77,7 +77,7 @@ def register_user():
         else:
             return jsonify("User wasn't successfully create"), 401
 
-@app.route('/login', methods=['GET'])
+@app.route('/login', methods=['POST'])
 def handle_login():
     email = request.json.get("email", None)
     password = request.json.get("password", None)
@@ -98,6 +98,39 @@ def handle_login():
         return jsonify({
             "msg": "error"
         }),400
+
+
+@app.route('/task', methods=['POST', 'GET'])
+@jwt_required()
+def handle_task():
+    user_id = get_jwt_identity()
+    if request.method == 'POST':
+        project_id = request.json.get("project_id", None)
+        name = request.json.get("name", None)
+        if project_id is not None and name is not None:
+            task =Task(name = name, user_id = user_id, project_id = project_id)
+            try:
+                db.session.add(task)
+                db.session.commit()
+                return jsonify(task.serialize()), 200
+            except Exception as error:
+                db.session.rollback()
+                return jsonify(error.args), 500
+        else:
+            return jsonify({
+            "msg": "ocurrio un error"
+            })
+
+    if request.method == 'GET':
+        tasks = Task.query.all()
+        tasks = list(map(lambda task: task.serialize(),tasks))
+        return jsonify(tasks),200 
+
+    
+
+
+
+
 # this only runs if `$ python src/main.py` is executed
 if __name__ == '__main__':
     PORT = int(os.environ.get('PORT', 3000))
