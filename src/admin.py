@@ -13,6 +13,7 @@ def setup_admin(app):
     admin.add_view(ModelView(User, db.session))
     admin.add_view(ModelView(Profile, db.session))
     admin.add_view(ModelView(Project, db.session))
+    admin.add_view(ModelView(Members, db.session))
     admin.add_view(ModelView(Task, db.session))
     admin.add_view(ModelView(Members, db.session))
     admin.add_view(ModelView(Columntask, db.session))
