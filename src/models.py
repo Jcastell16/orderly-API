@@ -136,6 +136,7 @@ class Columntask(db.Model):
 ## --> Task <-- ##
 class Task(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
     name = db.Column(db.String(50), nullable=False)
     subtask = db.relationship("Subtask", backref="task", uselist=True)
