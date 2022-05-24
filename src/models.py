@@ -1,7 +1,28 @@
+from tabnanny import check
+from time import timezone
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import backref
+from enum import Enum
+from datetime import datetime
 
 db = SQLAlchemy()
+
+class Roles(str, Enum):
+    ADMINISTRADOR: str = "Administrador"
+    USUARIO: str = "Usuario"
+
+class Gender(str, Enum):
+    HOMBRE: str = "Hombre"
+    MUJER: str = "Mujer"
+
+class Priority(str, Enum):
+    ALTA: str = "Alta"
+    MEDIA: str = "Media"
+    BAJA: str = "Baja"
+
+class Status(str, Enum):
+    ENCURSO: str = "En Curso"
+    FINALIZADO: str = "Finalizado"
 
 ## --> Users <-- ##
 class User(db.Model):
@@ -9,11 +30,13 @@ class User(db.Model):
     email = db.Column(db.String(50), unique=True, nullable=False)
     password = db.Column(db.String(250), nullable=False)
     is_active = db.Column(db.Boolean, default=True)
-    project = db.relationship("Project", backref="user", uselist=True)
+    members = db.relationship("Members", backref="user", uselist=True)
     profile = db.relationship("Profile", back_populates="user", uselist=False)
+    project = db.relationship("Project", backref="user", uselist=True)
+    task = db.relationship("Task", backref="user", uselist=True)
 
-    def __repr__(self):
-        return '<User: %r>' % self.email
+    def repr(self):
+        return '<User: %r>' % self.id, self.email
 
     def serialize(self):
         return {
@@ -25,60 +48,94 @@ class User(db.Model):
 class Profile(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    name = db.Column(db.String(50), nullable=False)
-    lastname = db.Column(db.String(50), nullable=False)
+    name = db.Column(db.String(150), nullable=False)
+    lastname = db.Column(db.String(150), nullable=False)
     description = db.Column(db.String(250))
-    departamento = db.Column(db.String(50))
-    photo = db.Column(db.String(200))
+    photo = db.Column(db.String(250))
+    gender = db.Column(db.Enum(Gender))
     user = db.relationship("User", back_populates="profile")
     
-    def __repr__(self):
-        return '<Profile: %r>' % self.name
+    def repr(self):
+        return '<Profile: %r>' % self.id, self.name
 
     def serialize(self):
         return {
+            "id": self.id,
             "user_id": self.user_id,
             "name": self.name,
-            "lastname": self.lastname,
+            "lastname": self.lastname,            
             "description": self.description,
-            "email": self.email,
-            "rol": self.rol,
-            "departamento": self.departamento,
+            "gender": self.gender,
             "photo": self.photo,
+        }
+
+## --> Members <-- ##
+class Members(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    nature = db.Column(db.String(50), nullable=False)
+    nature_id = db.Column(db.Integer, nullable=False)
+    rol = db.Column(db.Enum(Roles))
+
+    def repr(self):
+        return '<Members: %r>' % self.id
+
+    def serialize(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "nature": self.nature,
+            "nature_id": self.nature_id,
+            "rol": self.rol
         }
 
 ## --> Project <-- ##
 class Project(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    name = db.Column(db.String(50), nullable=False)
-    members = db.Column(db.String(50))
+    name = db.Column(db.String(150), nullable=False)
     description = db.Column(db.String(250))
-    finish_date = db.Column(db.Date)
-    status = db.Column(db.Boolean, default=True)
-    rol = db.Column(db.String(50)) 
-    goals = db.Column(db.String(50))
+    due_date = db.Column(db.String(50))
+    start_date = db.Column(db.DateTime)
+    status = db.Column(db.Enum(Status), nullable=False)
+    columntask = db.relationship("Columntask", backref="project", uselist=True)
     task = db.relationship("Task", backref="project", uselist=True)
 
 
-    def __repr__(self):
-        return '<Project: %r>' % self.name
+    def repr(self):
+        return '<Project: %r>' % self.id, self.name
 
     def serialize(self):
         return {
+            "id": self.id,
             "user_id": self.user_id,
             "name": self.name,
-            "members": self.members,
             "description": self.description,
-            "finish_date": self.finish_date,
-            "status": self.status,
-            "goals": self.goals
+            "due_date": self.due_date,
+            "start_date": self.start_date,
+            "status": self.status
+        }
+
+## --> Columntask <-- ##
+class Columntask(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
+    name = db.Column(db.String(50))
+    task = db.relationship("Task", backref="columntask", uselist=True)
+
+    def repr(self):
+        return '<Columntask: %r>' % self.id, self.name
+
+    def serialize(self):
+        return {
+            "id": self.id,
+            "project_id": self.project_id,
+            "name": self.name
         }
 
 ## --> Task <-- ##
 class Task(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
     name = db.Column(db.String(50), nullable=False)
     subtask = db.relationship("Subtask", backref="task", uselist=True)
@@ -101,14 +158,26 @@ class Subtask(db.Model):
     task_id = db.Column(db.Integer, db.ForeignKey('task.id'), nullable=False)
     name = db.Column(db.String(50), nullable=False)
     description = db.Column(db.String(250))
-    finish_date = db.Column(db.Date)
+    check_in = db.Column(db.Boolean, default=False)
+    due_date = db.Column(db.String(50))
+    start_date = db.Column(db.DateTime)
+    priority = db.Column(db.Enum(Priority))
+    members = db.relationship("Members", backref="task", uselist=True)
 
-    def __repr__(self):
-        return '<Subtask: %r>' % self.name
+    def repr(self):
+        return '<Task: %r>' % self.id, self.name
 
     def serialize(self):
         return {
+            "id": self.id,
             "user_id": self.user_id,
             "project_id": self.project_id,
-            "name": self.name
+            "columntask_id": self.columntask_id,
+            "members_id": self.members_id,
+            "name": self.name, 
+            "description": self.description,
+            "check_in": self.check_in,
+            "due_date": self.due_date,
+            "start_date": self.start_date,
+            "priority": self.priority,
         }

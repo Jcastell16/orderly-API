@@ -16,7 +16,7 @@ app = Flask(__name__)
 app.url_map.strict_slashes = False
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DB_CONNECTION_STRING')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['JWT_SECRET_KEY']=os.environ.get('FLASK_APP_KEY')
+app.config['JWT_SECRET_KEY'] = os.environ.get('FLASK_APP_KEY')
 jwt = JWTManager(app)
 MIGRATE = Migrate(app, db)
 db.init_app(app)
@@ -24,14 +24,19 @@ CORS(app)
 setup_admin(app)
 
 # Handle/serialize errors like a JSON object
+
+
 @app.errorhandler(APIException)
 def handle_invalid_usage(error):
     return jsonify(error.to_dict()), error.status_code
 
 # generate sitemap with all your endpoints
+
+
 @app.route('/')
 def sitemap():
     return generate_sitemap(app)
+
 
 @app.route('/user', methods=['GET'])
 def handle_hello():
@@ -40,6 +45,7 @@ def handle_hello():
         "msg": "Hello, this is your GET /user response "
     }
     return jsonify(response_body), 200
+
 
 @app.route("/register", methods=["POST"])
 def register_user():
@@ -52,9 +58,9 @@ def register_user():
     if password is None:
         return jsonify("Please provide a valid password."), 400
     if name is None:
-        return jsonify("Please provide a valid name."), 400  
+        return jsonify("Please provide a valid name."), 400
     if lastname is None:
-        return jsonify("Please provide a valid lastname."), 400    
+        return jsonify("Please provide a valid lastname."), 400
     user = User.query.filter_by(email=email).first()
     if user:
         return jsonify("User already exists."), 401
@@ -82,7 +88,8 @@ def handle_login():
     email = request.json.get("email", None)
     password = request.json.get("password", None)
     if email is not None and password is not None:
-        user = User.query.filter_by(email=email, password=password).one_or_none()
+        user = User.query.filter_by(
+            email=email, password=password).one_or_none()
         if user is not None:
             create_token = create_access_token(identity=user.id)
             return jsonify({
@@ -91,9 +98,9 @@ def handle_login():
                 "email": user.email
             }), 200
         else:
-           return jsonify({
-            "msg": "not found"
-        }),404  
+            return jsonify({
+                "msg": "not found"
+            }), 404
     else:
         return jsonify({
             "msg": "error"

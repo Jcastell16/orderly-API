@@ -1,6 +1,6 @@
 import os
 from flask_admin import Admin
-from models import Task, User, Profile, Project, Subtask, db
+from models import Columntask, Members, Task, User, Profile, Project, Members, db
 from flask_admin.contrib.sqla import ModelView
 
 def setup_admin(app):
@@ -13,7 +13,9 @@ def setup_admin(app):
     admin.add_view(ModelView(User, db.session))
     admin.add_view(ModelView(Profile, db.session))
     admin.add_view(ModelView(Project, db.session))
+    admin.add_view(ModelView(Members, db.session))
     admin.add_view(ModelView(Task, db.session))
-    admin.add_view(ModelView(Subtask, db.session))
+    admin.add_view(ModelView(Members, db.session))
+    admin.add_view(ModelView(Columntask, db.session))
     # You can duplicate that line to add mew models
     # admin.add_view(ModelView(YourModelName, db.session))
