@@ -1,7 +1,6 @@
 """
 This module takes care of starting the API Server, Loading the DB and Adding the endpoints
 """
-
 import os
 from flask import Flask, request, jsonify, url_for
 from flask_migrate import Migrate
@@ -175,58 +174,56 @@ def getUsers(email):
         return jsonify(request), 200 
 
 
-@app.route('/column', methods=['GET'])
-def getColumn():
-    column = Columntask.query.all()
+@app.route('/column/<int:project_id>', methods=['GET'])
+def getColumn(project_id):
+    column = Columntask.query.filter_by(project_id=project_id).all()
     request = list(map(lambda x: x.serialize(), column))
     return jsonify(request), 200
 
-
-@app.route('/column', methods=["POST"])
-def handleNewColumn():
+@app.route('/column/<int:project_id>', methods=["POST"])
+def handleNewColumn(project_id):
     name = request.json.get("name", None)
-    project_id = request.json.get("project_id", None)
     if name is None:
         return jsonify({"msg": "Please provide a valid name."}), 400
-    if project_id is None:
-        return jsonify({"msg": "Please provide a valid projectid."}), 400
     else:
         newColumn = Columntask()
         newColumn.name = name
         newColumn.project_id = project_id
         db.session.add(newColumn)
         db.session.commit()
-        return jsonify({"msg": "Favorite was successfully created."}), 200
+        return jsonify({"msg": "Column was successfully created."}), 200
 
 @app.route('/column', methods=["DELETE"])
 def handleDeleteColumn():
     id = request.json.get("id", None)
     if id is None:
-        return jsonify({"msg": "Please provide a valid Column."}), 400
+        return jsonify({"msg": "Please provide a valid column."}), 400
     DeleteColumn = Columntask.query.filter_by(id=id).first()
     if DeleteColumn is None:
         return jsonify({"msg": "The Column does not exist!."}), 401
+    tasks = Task.query.filter_by(columntask_id=id).all()
+    if len(tasks) > 0:
+        for n in tasks:
+            db.session.delete(n)
+
     db.session.delete(DeleteColumn)
     db.session.commit()
-    return jsonify({"msg": "Favorite was successfully delete."}), 200
+    return jsonify({"msg": "Column was successfully delete."}), 200
 
 @app.route('/column', methods=["PATCH"])
 def handleUpdateColumn():
-    idin = request.json.get("id", None)
+    id = request.json.get("id", None)
     name = request.json.get("name", None)
     if name is None:
         return jsonify({"msg": "Please provide a valid name."}), 400
-    UpdateColumn = Columntask.query.filter_by(id=idin).first()
-    print(name)
-    print(UpdateColumn.project_id)
+    UpdateColumn = Columntask.query.filter_by(id=id).first()
     if UpdateColumn is None:
         return jsonify({"msg": "The Column does not exist!."}), 401
     else:
-
         UpdateColumn.name = name
         db.session.add(UpdateColumn)
         db.session.commit()
-        return jsonify({"msg": "Favorite was successfully delete."}), 200
+        return jsonify({"msg": "Column was successfully update."}), 200
 
 
 @app.route('/task', methods=['POST', 'GET', 'DELETE', 'PATCH'])
