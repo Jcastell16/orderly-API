@@ -9,7 +9,9 @@ from flask_jwt_extended import JWTManager, create_access_token, get_jwt_identity
 from flask_cors import CORS
 from utils import APIException, generate_sitemap
 from admin import setup_admin
-from models import Task, db, User, Profile
+from models import Status, db, User, Profile, Project, Members, Roles, Columntask, Task
+from enum import Enum
+import datetime
 #from models import Person
 
 app = Flask(__name__)
@@ -105,6 +107,127 @@ def handle_login():
         return jsonify({
             "msg": "error"
         }),400
+
+
+@app.route('/newproject', methods=['POST'])
+@jwt_required()
+def new_project():
+    name = request.json.get("name", None)
+    due_date = request.json.get("due_date")
+    description = request.json.get("description")
+    members = request.json.get("members")
+    if name is None:
+        return jsonify("Please provide a valid name."), 400
+    else:
+        id= get_jwt_identity()
+        newProject = Project()
+        newProject.user_id = id
+        newProject.name = name
+        newProject.start_date= datetime.datetime.utcnow()
+        newProject.due_date= due_date
+        newProject.status = Status.ENCURSO
+        newProject.description = description
+        db.session.add(newProject)
+        db.session.commit()
+
+        ownersmembers = Members()
+        ownersmembers.user_id = id
+        ownersmembers.nature = "project"
+        ownersmembers.nature_id= newProject.id
+        ownersmembers.rol= Roles.ADMINISTRADOR
+        db.session.add(ownersmembers)
+        db.session.commit()
+
+    if len(members) > 0:
+        for n in members:
+            member = Members()
+            member.nature_id = newProject.id
+            member.nature= "project"
+            memberuser = User.query.filter_by(email=n["email"]).first()
+            member.user_id = memberuser.id
+            if n["rol"]== "Usuario":
+                member.rol = Roles.USUARIO
+            else:
+                member.rol = Roles.ADMINISTRADOR
+            
+            db.session.add(member)
+            db.session.commit()
+        return jsonify({
+            "msg": "projecto grupal registrado"
+        }), 200
+    else:
+        return jsonify({
+            "msg": "projecto individual registrado"
+        }), 200
+
+        
+@app.route('/users/<string:email>', methods=['GET'])
+def getUsers(email):
+    email = f"%{email}%"
+    users = User.query.filter(User.email.like(email)).limit(3).all()
+    print(users, email)
+    if users  is None:
+        return jsonify({
+            "msg":"No hay coincidencia"
+        }), 401
+    else:
+        request = list(map(lambda user:user.serialize(),users))    
+        return jsonify(request), 200 
+
+
+@app.route('/column', methods=['GET'])
+def getColumn():
+    column = Columntask.query.all()
+    request = list(map(lambda x: x.serialize(), column))
+    return jsonify(request), 200
+
+
+@app.route('/column', methods=["POST"])
+def handleNewColumn():
+    name = request.json.get("name", None)
+    project_id = request.json.get("project_id", None)
+    if name is None:
+        return jsonify({"msg": "Please provide a valid name."}), 400
+    if project_id is None:
+        return jsonify({"msg": "Please provide a valid projectid."}), 400
+    else:
+        newColumn = Columntask()
+        newColumn.name = name
+        newColumn.project_id = project_id
+        db.session.add(newColumn)
+        db.session.commit()
+        return jsonify({"msg": "Favorite was successfully created."}), 200
+
+@app.route('/column', methods=["DELETE"])
+def handleDeleteColumn():
+    id = request.json.get("id", None)
+    if id is None:
+        return jsonify({"msg": "Please provide a valid Column."}), 400
+    DeleteColumn = Columntask.query.filter_by(id=id).first()
+    if DeleteColumn is None:
+        return jsonify({"msg": "The Column does not exist!."}), 401
+    db.session.delete(DeleteColumn)
+    db.session.commit()
+    return jsonify({"msg": "Favorite was successfully delete."}), 200
+
+@app.route('/column', methods=["PUT"])
+def handleUpdateColumn():
+    idin = request.json.get("id", None)
+    name = request.json.get("name", None)
+    if name is None:
+        return jsonify({"msg": "Please provide a valid name."}), 400
+    UpdateColumn = Columntask.query.filter_by(id=idin).first()
+    print(name)
+    print(UpdateColumn.project_id)
+    if UpdateColumn is None:
+        return jsonify({"msg": "The Column does not exist!."}), 401
+    else:
+        Column = Columntask()
+        Column.name = name
+        Column.name = UpdateColumn.project_id
+        db.session.merge(Column)
+        db.session.commit()
+        return jsonify({"msg": "Favorite was successfully delete."}), 200
 
 
 @app.route('/task', methods=['POST', 'GET'])

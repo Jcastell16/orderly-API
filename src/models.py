@@ -138,32 +138,15 @@ class Task(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
-    name = db.Column(db.String(50), nullable=False)
-    subtask = db.relationship("Subtask", backref="task", uselist=True)
-
-    def __repr__(self):
-        return '<Task: %r>' % self.name
-
-    def serialize(self):
-        return {
-            "task_id": self.id,
-            "user_id": self.user_id,
-            "project_id": self.project_id,
-            "name": self.name
-        }
-
-## --> Subtask <-- ##
-class Subtask(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    task_id = db.Column(db.Integer, db.ForeignKey('task.id'), nullable=False)
+    columntask_id = db.Column(db.Integer, db.ForeignKey('columntask.id'), nullable=False)
+    members_id = db.Column(db.Integer, db.ForeignKey('members.id'))
     name = db.Column(db.String(50), nullable=False)
     description = db.Column(db.String(250))
     check_in = db.Column(db.Boolean, default=False)
     due_date = db.Column(db.String(50))
     start_date = db.Column(db.DateTime)
     priority = db.Column(db.Enum(Priority))
-    members = db.relationship("Members", backref="task", uselist=True)
+    members = db.relationship("Members", backref="task")
 
     def repr(self):
         return '<Task: %r>' % self.id, self.name
