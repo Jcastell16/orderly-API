@@ -73,10 +73,10 @@ class Profile(db.Model):
 class Members(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    nature = db.Column(db.String(50), nullable=False)
-    nature_id = db.Column(db.Integer, nullable=False)
+    project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
     rol = db.Column(db.Enum(Roles))
-
+    task = db.relationship("Task", backref="members", uselist=True)
+    
     def repr(self):
         return '<Members: %r>' % self.id
 
@@ -84,8 +84,7 @@ class Members(db.Model):
         return {
             "id": self.id,
             "user_id": self.user_id,
-            "nature": self.nature,
-            "nature_id": self.nature_id,
+            "project_id": self.project_id,
             "rol": self.rol
         }
 
@@ -98,9 +97,9 @@ class Project(db.Model):
     due_date = db.Column(db.String(50))
     start_date = db.Column(db.DateTime)
     status = db.Column(db.Enum(Status), nullable=False)
+    members = db.relationship("Members", backref="project", uselist=True)
     columntask = db.relationship("Columntask", backref="project", uselist=True)
     task = db.relationship("Task", backref="project", uselist=True)
-
 
     def repr(self):
         return '<Project: %r>' % self.id, self.name
@@ -139,14 +138,13 @@ class Task(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
     columntask_id = db.Column(db.Integer, db.ForeignKey('columntask.id'), nullable=False)
-    members_id = db.Column(db.Integer, db.ForeignKey('members.id'))
+    members_id = db.Column(db.Integer, db.ForeignKey('members.id'), nullable=True)
     name = db.Column(db.String(50), nullable=False)
     description = db.Column(db.String(250))
     check_in = db.Column(db.Boolean, default=False)
     due_date = db.Column(db.String(50))
     start_date = db.Column(db.DateTime)
     priority = db.Column(db.Enum(Priority))
-    members = db.relationship("Members", backref="task")
 
     def repr(self):
         return '<Task: %r>' % self.id, self.name

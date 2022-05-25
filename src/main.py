@@ -165,7 +165,6 @@ def new_project():
 def getUsers(email):
     email = f"%{email}%"
     users = User.query.filter(User.email.like(email)).limit(3).all()
-    print(users, email)
     if users  is None:
         return jsonify({
             "msg":"No hay coincidencia"
@@ -210,7 +209,7 @@ def handleDeleteColumn():
     db.session.commit()
     return jsonify({"msg": "Favorite was successfully delete."}), 200
 
-@app.route('/column', methods=["PUT"])
+@app.route('/column', methods=["PATCH"])
 def handleUpdateColumn():
     idin = request.json.get("id", None)
     name = request.json.get("name", None)
@@ -222,10 +221,9 @@ def handleUpdateColumn():
     if UpdateColumn is None:
         return jsonify({"msg": "The Column does not exist!."}), 401
     else:
-        Column = Columntask()
-        Column.name = name
-        Column.name = UpdateColumn.project_id
-        db.session.merge(Column)
+
+        UpdateColumn.name = name
+        db.session.add(UpdateColumn)
         db.session.commit()
         return jsonify({"msg": "Favorite was successfully delete."}), 200
 
