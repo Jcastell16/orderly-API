@@ -1,6 +1,7 @@
 """
 This module takes care of starting the API Server, Loading the DB and Adding the endpoints
 """
+from logging import exception
 import os
 from flask import Flask, request, jsonify, url_for
 from flask_migrate import Migrate
@@ -141,7 +142,6 @@ def new_project():
         for n in members:
             member = Members()
             member.nature_id = newProject.id
-            member.nature= "project"
             memberuser = User.query.filter_by(email=n["email"]).first()
             member.user_id = memberuser.id
             if n["rol"]== "Usuario":
@@ -228,6 +228,95 @@ def handleUpdateColumn():
         db.session.commit()
         return jsonify({"msg": "Favorite was successfully delete."}), 200
 
+@app.route('/profiles', methods=['GET'])
+@jwt_required()
+def getProfiles():
+    id = get_jwt_identity()
+    projectsId=[]
+    profilesId=[]
+    projectMember = Members.query.filter_by(user_id=id).all()
+    if len(projectMember) > 0:
+        for n in projectMember:
+            projectId = Members.query.filter_by(id = n.nature_id).first()
+            projectsId.append(projectId)
+            print(projectsId)
+        if len(projectsId) > 0:
+            for n in projectsId:
+                profile_id = Profile.query.filter_by(user_id = n.user_id).first()
+                profilesId.append(profile_id)
+            if len(profilesId) > 0:
+                request = list(map(lambda profiles:profiles.serialize(), profilesId))    
+                return jsonify(request), 200
+            else:
+                return jsonify({ 
+                    "msg":"error"
+                }), 400
+        else:
+            return jsonify({
+                "msg":"No hay miembros en sus projectos"
+            }), 200
+    else:
+        return jsonify({
+            "msg":"No pertenece a ningun projecto"
+        }), 200 
+
+@app.route('/projects', methods=['GET'])
+@jwt_required()
+def getProjects():
+    project_list= []
+    id = get_jwt_identity()
+    projectMember= Members.query.filter_by(user_id=id).all()
+    if len(projectMember) > 0:
+        for n in projectMember:
+            projects = Project.query.filter_by(id= n.nature_id).first()
+            project_list.append(projects)
+        request= list(map(lambda project:project.serialize(), project_list))
+        return jsonify(request), 200
+    else:
+        return jsonify({"msg":"No pertenece a ningun projecto"}), 200
+
+@app.route('/profile', methods=['GET'])
+@jwt_required()
+def getProfile():
+    id = get_jwt_identity()
+    profileUser = Profile.query.filter_by(user_id= id).first()
+    request = profileUser.serialize()  
+    return jsonify(request), 200
+
+@app.route('/membertask', methods=['GET'])
+@jwt_required()
+def getTasks():
+    id = get_jwt_identity()
+    ownerTask = Task.query.filter_by(user_id= id).all()
+    request= list(map(lambda profiles:profiles.serialize(), ownerTask))    
+    return jsonify(request), 200
+
+@app.route('/profile', methods=['PUT'])
+@jwt_required()
+def editProfile():
+    id = get_jwt_identity()
+    name = request.json.get("name")
+    lastname = request.json.get("lastname")
+    description = request.json.get("description")
+    photo = request.json.get("photo")
+    gender = request.json.get("gender")
+
+    profile_update = Profile.query.filter_by(user_id=id).first()
+    if profile_update is None:
+        return jsonify({"msg":"Profile not found"}), 404
+    try:
+        if name is not None and lastname is not None:
+            profile_update.name = name  
+            profile_update.lastname = lastname
+        else:
+            profile_update.description = description
+            profile_update.photo = photo
+            profile_update.gender = gender
+            db.session.commit()
+            return jsonify(profile_update.serialize()), 200
+    except Exception as error:
+        db.session.rollback()
+        return  jsonify(error.args)
 
 if __name__ == '__main__':
     PORT = int(os.environ.get('PORT', 3000))

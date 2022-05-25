@@ -1,14 +1,8 @@
 """empty message
 
-<<<<<<<< HEAD:migrations/versions/78b94c5dfc5b_.py
-Revision ID: 78b94c5dfc5b
+Revision ID: 4a760357db4f
 Revises: 
-Create Date: 2022-05-22 23:03:47.486726
-========
-Revision ID: 0bd1ddf167af
-Revises: 
-Create Date: 2022-05-23 20:37:52.645040
->>>>>>>> c23523385c14376518f1c574b1865e501027342a:migrations/versions/0bd1ddf167af_.py
+Create Date: 2022-05-23 22:56:31.830463
 
 """
 from alembic import op
@@ -16,11 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-<<<<<<<< HEAD:migrations/versions/78b94c5dfc5b_.py
-revision = '78b94c5dfc5b'
-========
-revision = '0bd1ddf167af'
->>>>>>>> c23523385c14376518f1c574b1865e501027342a:migrations/versions/0bd1ddf167af_.py
+revision = '4a760357db4f'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -59,19 +49,11 @@ def upgrade():
     op.create_table('project',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
-<<<<<<<< HEAD:migrations/versions/78b94c5dfc5b_.py
-    sa.Column('members_id', sa.Integer(), nullable=True),
-========
->>>>>>>> c23523385c14376518f1c574b1865e501027342a:migrations/versions/0bd1ddf167af_.py
     sa.Column('name', sa.String(length=150), nullable=False),
     sa.Column('description', sa.String(length=250), nullable=True),
     sa.Column('due_date', sa.String(length=50), nullable=True),
     sa.Column('start_date', sa.DateTime(), nullable=True),
     sa.Column('status', sa.Enum('ENCURSO', 'FINALIZADO', name='status'), nullable=False),
-<<<<<<<< HEAD:migrations/versions/78b94c5dfc5b_.py
-    sa.ForeignKeyConstraint(['members_id'], ['members.id'], ),
-========
->>>>>>>> c23523385c14376518f1c574b1865e501027342a:migrations/versions/0bd1ddf167af_.py
     sa.ForeignKeyConstraint(['user_id'], ['user.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -84,6 +66,7 @@ def upgrade():
     )
     op.create_table('task',
     sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('project_id', sa.Integer(), nullable=False),
     sa.Column('columntask_id', sa.Integer(), nullable=False),
     sa.Column('members_id', sa.Integer(), nullable=True),
@@ -96,10 +79,7 @@ def upgrade():
     sa.ForeignKeyConstraint(['columntask_id'], ['columntask.id'], ),
     sa.ForeignKeyConstraint(['members_id'], ['members.id'], ),
     sa.ForeignKeyConstraint(['project_id'], ['project.id'], ),
-<<<<<<<< HEAD:migrations/versions/78b94c5dfc5b_.py
-========
     sa.ForeignKeyConstraint(['user_id'], ['user.id'], ),
->>>>>>>> c23523385c14376518f1c574b1865e501027342a:migrations/versions/0bd1ddf167af_.py
     sa.PrimaryKeyConstraint('id')
     )
     # ### end Alembic commands ###
