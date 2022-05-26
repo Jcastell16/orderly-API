@@ -132,8 +132,7 @@ def new_project():
 
         ownersmembers = Members()
         ownersmembers.user_id = id
-        ownersmembers.nature = "project"
-        ownersmembers.nature_id= newProject.id
+        ownersmembers.project_id= newProject.id
         ownersmembers.rol= Roles.ADMINISTRADOR
         db.session.add(ownersmembers)
         db.session.commit()
@@ -141,7 +140,7 @@ def new_project():
     if len(members) > 0:
         for n in members:
             member = Members()
-            member.nature_id = newProject.id
+            member.project_id = newProject.id
             memberuser = User.query.filter_by(email=n["email"]).first()
             member.user_id = memberuser.id
             if n["rol"]== "Usuario":
@@ -232,27 +231,22 @@ def getProfiles():
     id = get_jwt_identity()
     projectsId=[]
     profilesId=[]
-    projectMember = Members.query.filter_by(user_id=id).all()
+    projectMember = Members.query.filter_by(user_id = id).all()
     if len(projectMember) > 0:
-        for n in projectMember:
-            projectId = Members.query.filter_by(id = n.nature_id).first()
+        
+        for member in projectMember:
+            projectId = Members.query.filter_by(project_id = member.project_id).all()
             projectsId.append(projectId)
-            print(projectsId)
-        if len(projectsId) > 0:
-            for n in projectsId:
-                profile_id = Profile.query.filter_by(user_id = n.user_id).first()
-                profilesId.append(profile_id)
-            if len(profilesId) > 0:
-                request = list(map(lambda profiles:profiles.serialize(), profilesId))    
-                return jsonify(request), 200
-            else:
-                return jsonify({ 
-                    "msg":"error"
-                }), 400
-        else:
-            return jsonify({
-                "msg":"No hay miembros en sus projectos"
-            }), 200
+        for project in projectsId:
+            for member in project:
+                member_profile = Profile.query.filter_by(user_id = member.user_id).first()
+                if member_profile.serialize() in profilesId:
+                    continue
+                else:
+                    if member_profile.user_id != id:
+                        profilesId.append(member_profile.serialize())
+        print(len(profilesId))
+        return jsonify(profilesId), 200
     else:
         return jsonify({
             "msg":"No pertenece a ningun projecto"
@@ -266,12 +260,13 @@ def getProjects():
     projectMember= Members.query.filter_by(user_id=id).all()
     if len(projectMember) > 0:
         for n in projectMember:
-            projects = Project.query.filter_by(id= n.nature_id).first()
+            projects = Project.query.filter_by(id= n.project_id).first()
             project_list.append(projects)
         request= list(map(lambda project:project.serialize(), project_list))
         return jsonify(request), 200
     else:
         return jsonify({"msg":"No pertenece a ningun projecto"}), 200
+
 
 @app.route('/profile', methods=['GET'])
 @jwt_required()
@@ -315,6 +310,7 @@ def editProfile():
     except Exception as error:
         db.session.rollback()
         return  jsonify(error.args)
+
 
 if __name__ == '__main__':
     PORT = int(os.environ.get('PORT', 3000))
