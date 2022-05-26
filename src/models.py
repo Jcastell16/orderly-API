@@ -87,6 +87,13 @@ class Members(db.Model):
             "project_id": self.project_id,
             "rol": self.rol
         }
+    
+    def otherserialize(self):
+        return {
+            "id": self.id,
+            "project_id": self.project_id,
+            "rol": self.rol
+        }
 
 ## --> Project <-- ##
 class Project(db.Model):

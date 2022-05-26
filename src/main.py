@@ -11,7 +11,7 @@ from utils import APIException, generate_sitemap
 from admin import setup_admin
 from models import Status, db, User, Profile, Project, Members, Roles, Columntask, Task
 from enum import Enum
-import datetime 
+import datetime
 #from models import Person
 
 app = Flask(__name__)
@@ -108,6 +108,7 @@ def handle_login():
             "msg": "error"
         }),400
 
+
 @app.route('/newproject', methods=['POST'])
 @jwt_required()
 def new_project():
@@ -131,8 +132,7 @@ def new_project():
 
         ownersmembers = Members()
         ownersmembers.user_id = id
-        ownersmembers.nature = "project"
-        ownersmembers.nature_id= newProject.id
+        ownersmembers.project_id= newProject.id
         ownersmembers.rol= Roles.ADMINISTRADOR
         db.session.add(ownersmembers)
         db.session.commit()
@@ -140,8 +140,7 @@ def new_project():
     if len(members) > 0:
         for n in members:
             member = Members()
-            member.nature_id = newProject.id
-            member.nature= "project"
+            member.project_id = newProject.id
             memberuser = User.query.filter_by(email=n["email"]).first()
             member.user_id = memberuser.id
             if n["rol"]== "Usuario":
@@ -224,7 +223,187 @@ def handleUpdateColumn():
         db.session.commit()
         return jsonify({"msg": "Column was successfully update."}), 200
 
+@app.route('/profiles', methods=['GET'])
+@jwt_required()
+def getProfiles():
+    id = get_jwt_identity()
+    projectsId=[]
+    profilesId=[]
+    projectMember = Members.query.filter_by(user_id = id).all()
+    if len(projectMember) > 0:
+        
+        for member in projectMember:
+            projectId = Members.query.filter_by(project_id = member.project_id).all()
+            projectsId.append(projectId)
+        for project in projectsId:
+            for member in project:
+                member_profile = Profile.query.filter_by(user_id = member.user_id).first()
+                if member_profile.serialize() in profilesId:
+                    continue
+                else:
+                    if member_profile.user_id != id:
+                        profilesId.append(member_profile.serialize())
+        print(len(profilesId))
+        return jsonify(profilesId), 200
+    else:
+        return jsonify({
+            "msg":"No pertenece a ningun projecto"
+        }), 200 
 
+@app.route('/projects', methods=['GET'])
+@jwt_required()
+def getProjects():
+    project_list= []
+    id = get_jwt_identity()
+    projectMember= Members.query.filter_by(user_id=id).all()
+    if len(projectMember) > 0:
+        for n in projectMember:
+            projects = Project.query.filter_by(id= n.project_id).first()
+            project_list.append(projects)
+        request= list(map(lambda project:project.serialize(), project_list))
+        return jsonify(request), 200
+    else:
+        return jsonify({"msg":"No pertenece a ningun projecto"}), 200
+
+
+@app.route('/profile', methods=['GET'])
+@jwt_required()
+def getProfile():
+    id = get_jwt_identity()
+    profileUser = Profile.query.filter_by(user_id= id).first()
+    request = profileUser.serialize()  
+    return jsonify(request), 200
+
+@app.route('/membertask', methods=['GET'])
+@jwt_required()
+def getTasks():
+    id = get_jwt_identity()
+    ownerTask = Task.query.filter_by(user_id= id).all()
+    request= list(map(lambda profiles:profiles.serialize(), ownerTask))    
+    return jsonify(request), 200
+
+@app.route('/profile', methods=['PUT'])
+@jwt_required()
+def editProfile():
+    id = get_jwt_identity()
+    name = request.json.get("name")
+    lastname = request.json.get("lastname")
+    description = request.json.get("description")
+    photo = request.json.get("photo")
+    gender = request.json.get("gender")
+
+    profile_update = Profile.query.filter_by(user_id=id).first()
+    if profile_update is None:
+        return jsonify({"msg":"Profile not found"}), 404
+    try:
+        if name is not None and lastname is not None:
+            profile_update.name = name  
+            profile_update.lastname = lastname
+        else:
+            profile_update.description = description
+            profile_update.photo = photo
+            profile_update.gender = gender
+            db.session.commit()
+            return jsonify(profile_update.serialize()), 200
+    except Exception as error:
+        db.session.rollback()
+        return  jsonify(error.args)
+
+
+@app.route('/task', methods=['POST', 'GET', 'DELETE', 'PATCH'])
+@jwt_required()
+def handle_task():
+    user_id = get_jwt_identity()
+    if request.method == 'POST':
+        project_id = request.json.get("project_id", None)
+        name = request.json.get("name", None)
+        columntask_id= request.json.get("columntask_id", None)
+        if project_id is not None and name is not None and columntask_id is not None:
+            task =Task(name = name, user_id = user_id, project_id = project_id, columntask_id= columntask_id)
+            try:
+                db.session.add(task)
+                db.session.commit()
+                return jsonify(task.serialize()), 200
+            except Exception as error:
+                db.session.rollback()
+                return jsonify(error.args), 500
+        else:
+            return jsonify({
+            "msg": "ocurrio un error"
+            }), 400
+
+    if request.method == 'GET':
+        tasks = Task.query.all()
+        tasks = list(map(lambda task: task.serialize(),tasks))
+        return jsonify(tasks),200 
+    
+
+    if request.method == 'DELETE':
+        id = request.json.get("id", None)
+        if id is None:
+            return jsonify("ocurrio un error"), 404
+        deletetask= Task.query.filter_by(id=id).first()
+        if deletetask is None:
+            return jsonify("ocurrio un error"), 400
+        try:
+            db.session.delete(deletetask)
+            db.session.commit()
+            return jsonify(deletetask.serialize()),200
+        except Exception as error:
+            db.session.rollback()
+            return jsonify(error.args),500
+    
+    if request.method == 'PATCH':
+        id = request.json.get("id", None)
+        name= request.json.get("name", "")
+        columntask_id= request.json.get("columntask_id", None)
+        project_id= request.json.get("project_id", None)
+        description= request.json.get("description", "")
+        if id is None and columntask_id is None and project_id is None:
+            return jsonify("ocurrio un error"), 400
+        update_task= Task.query.filter_by(id=id, user_id=user_id, columntask_id=columntask_id).first()
+        
+        if update_task is None:
+            return jsonify("ocurrio un error"),400
+        else:
+            if name != "" and description == "":
+                try: 
+                    update_task.name= name
+                    db.session.add(update_task)
+                    db.session.commit()
+                    return jsonify(update_task.serialize()),200
+                except Exception as error:
+                    db.session.rollback()
+                    return jsonify(error.args), 500
+
+
+            if name == "" and description != "":
+                try: 
+                    update_task.description= description
+                    db.session.add(update_task)
+                    db.session.commit()
+                    return jsonify(update_task.serialize()),200
+                except Exception as error:
+                    db.session.rollback()
+                    return jsonify(error.args),500
+            else:
+                try:
+                    update_task.name= name
+                    update_task.description= description
+                    db.session.add(update_task)
+                    db.session.commit()
+                    return jsonify(update_task.serialize()), 200
+                except Exception as error:
+                    db.session.rollback()
+                    return jsonify(error.args),500
+            
+
+    
+
+
+
+
+# this only runs if `$ python src/main.py` is executed
 if __name__ == '__main__':
     PORT = int(os.environ.get('PORT', 3000))
     app.run(host='0.0.0.0', port=PORT, debug=False)
