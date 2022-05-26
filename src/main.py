@@ -1,7 +1,6 @@
 """
 This module takes care of starting the API Server, Loading the DB and Adding the endpoints
 """
-from asyncio import tasks
 import os
 from flask import Flask, request, jsonify, url_for
 from flask_migrate import Migrate
@@ -12,7 +11,7 @@ from utils import APIException, generate_sitemap
 from admin import setup_admin
 from models import Status, db, User, Profile, Project, Members, Roles, Columntask, Task
 from enum import Enum
-import datetime 
+import datetime
 #from models import Person
 
 app = Flask(__name__)
@@ -108,6 +107,7 @@ def handle_login():
         return jsonify({
             "msg": "error"
         }),400
+
 
 @app.route('/newproject', methods=['POST'])
 @jwt_required()
@@ -226,6 +226,100 @@ def handleUpdateColumn():
         return jsonify({"msg": "Column was successfully update."}), 200
 
 
+@app.route('/task', methods=['POST', 'GET', 'DELETE', 'PATCH'])
+@jwt_required()
+def handle_task():
+    user_id = get_jwt_identity()
+    if request.method == 'POST':
+        project_id = request.json.get("project_id", None)
+        name = request.json.get("name", None)
+        columntask_id= request.json.get("columntask_id", None)
+        if project_id is not None and name is not None and columntask_id is not None:
+            task =Task(name = name, user_id = user_id, project_id = project_id, columntask_id= columntask_id)
+            try:
+                db.session.add(task)
+                db.session.commit()
+                return jsonify(task.serialize()), 200
+            except Exception as error:
+                db.session.rollback()
+                return jsonify(error.args), 500
+        else:
+            return jsonify({
+            "msg": "ocurrio un error"
+            }), 400
+
+    if request.method == 'GET':
+        tasks = Task.query.all()
+        tasks = list(map(lambda task: task.serialize(),tasks))
+        return jsonify(tasks),200 
+    
+
+    if request.method == 'DELETE':
+        id = request.json.get("id", None)
+        if id is None:
+            return jsonify("ocurrio un error"), 404
+        deletetask= Task.query.filter_by(id=id).first()
+        if deletetask is None:
+            return jsonify("ocurrio un error"), 400
+        try:
+            db.session.delete(deletetask)
+            db.session.commit()
+            return jsonify(deletetask.serialize()),200
+        except Exception as error:
+            db.session.rollback()
+            return jsonify(error.args),500
+    
+    if request.method == 'PATCH':
+        id = request.json.get("id", None)
+        name= request.json.get("name", "")
+        columntask_id= request.json.get("columntask_id", None)
+        project_id= request.json.get("project_id", None)
+        description= request.json.get("description", "")
+        if id is None and columntask_id is None and project_id is None:
+            return jsonify("ocurrio un error"), 400
+        update_task= Task.query.filter_by(id=id, user_id=user_id, columntask_id=columntask_id).first()
+        
+        if update_task is None:
+            return jsonify("ocurrio un error"),400
+        else:
+            if name != "" and description == "":
+                try: 
+                    update_task.name= name
+                    db.session.add(update_task)
+                    db.session.commit()
+                    return jsonify(update_task.serialize()),200
+                except Exception as error:
+                    db.session.rollback()
+                    return jsonify(error.args), 500
+
+
+            if name == "" and description != "":
+                try: 
+                    update_task.description= description
+                    db.session.add(update_task)
+                    db.session.commit()
+                    return jsonify(update_task.serialize()),200
+                except Exception as error:
+                    db.session.rollback()
+                    return jsonify(error.args),500
+            else:
+                try:
+                    update_task.name= name
+                    update_task.description= description
+                    db.session.add(update_task)
+                    db.session.commit()
+                    return jsonify(update_task.serialize()), 200
+                except Exception as error:
+                    db.session.rollback()
+                    return jsonify(error.args),500
+            
+
+    
+
+
+
+
+# this only runs if `$ python src/main.py` is executed
 if __name__ == '__main__':
     PORT = int(os.environ.get('PORT', 3000))
     app.run(host='0.0.0.0', port=PORT, debug=False)
