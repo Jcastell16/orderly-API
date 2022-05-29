@@ -1,7 +1,6 @@
 """
 This module takes care of starting the API Server, Loading the DB and Adding the endpoints
 """
-from logging import exception
 import os
 from flask import Flask, request, jsonify, url_for
 from flask_migrate import Migrate
@@ -10,7 +9,7 @@ from flask_jwt_extended import JWTManager, create_access_token, get_jwt_identity
 from flask_cors import CORS
 from utils import APIException, generate_sitemap
 from admin import setup_admin
-from models import Status, db, User, Profile, Project, Members, Roles, Columntask, Task
+from models import Priority, Status, db, User, Profile, Project, Members, Roles, Columntask, Task
 from enum import Enum
 import datetime
 #from models import Person
@@ -179,9 +178,10 @@ def getColumn(project_id):
     request = list(map(lambda x: x.serialize(), column))
     return jsonify(request), 200
 
-@app.route('/column/<int:project_id>', methods=["POST"])
-def handleNewColumn(project_id):
+@app.route('/column', methods=["POST"])
+def handleNewColumn():
     name = request.json.get("name", None)
+    project_id = request.json.get("project_id", None)
     if name is None:
         return jsonify({"msg": "Please provide a valid name."}), 400
     else:
@@ -204,7 +204,6 @@ def handleDeleteColumn():
     if len(tasks) > 0:
         for n in tasks:
             db.session.delete(n)
-
     db.session.delete(DeleteColumn)
     db.session.commit()
     return jsonify({"msg": "Column was successfully delete."}), 200
@@ -329,7 +328,7 @@ def editProfile():
         return  jsonify(error.args)
 
 
-@app.route('/task', methods=['POST', 'GET', 'DELETE', 'PATCH'])
+@app.route('/task', methods=['POST', 'GET', 'DELETE'])
 @jwt_required()
 def handle_task():
     user_id = get_jwt_identity()
@@ -338,7 +337,7 @@ def handle_task():
         name = request.json.get("name", None)
         columntask_id= request.json.get("columntask_id", None)
         if project_id is not None and name is not None and columntask_id is not None:
-            task =Task(name = name, user_id = user_id, project_id = project_id, columntask_id= columntask_id)
+            task =Task(name = name, user_id = user_id, project_id = project_id, columntask_id= columntask_id, start_date=datetime.datetime.utcnow())
             try:
                 db.session.add(task)
                 db.session.commit()
@@ -415,6 +414,26 @@ def handle_task():
                 except Exception as error:
                     db.session.rollback()
                     return jsonify(error.args),500
+
+@app.route('/task', methods=["POST"])
+@jwt_required()
+def handleNewTask():
+    user_id = get_jwt_identity()
+    project_id = request.json.get("project_id", None)
+    columntask_id = request.json.get("columntask_id", None)
+    name = request.json.get("name", None)
+    if (name, user_id, project_id, columntask_id) is None:
+        return jsonify({"msg": "Please provide a valid name."}), 400
+    else:
+        newTask = Task()
+        newTask.name = name
+        newTask.project_id = project_id
+        newTask.columntask_id = columntask_id
+        newTask.user_id = user_id
+        newTask.start_date = datetime.datetime.utcnow()
+        db.session.add(newTask)
+        db.session.commit()
+        return jsonify({"msg": "Column was successfully created."}), 200     
 
 # this only runs if `$ python src/main.py` is executed
 if __name__ == '__main__':
