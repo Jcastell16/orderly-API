@@ -163,7 +163,7 @@ def new_project():
 @app.route('/users/<string:email>', methods=['GET'])
 def getUsers(email):
     email = f"%{email}%"
-    users = User.query.filter(User.email.like(email)).limit(3).all()
+    users = User.query.filter(User.email.like(email)).limit(3).all()   
     if users  is None:
         return jsonify({
             "msg":"No hay coincidencia"
@@ -254,18 +254,36 @@ def getProfiles():
 @app.route('/projects', methods=['GET'])
 @jwt_required()
 def getProjects():
-    project_list= []
-    id = get_jwt_identity()
-    projectMember= Members.query.filter_by(user_id=id).all()
-    if len(projectMember) > 0:
-        for n in projectMember:
-            projects = Project.query.filter_by(id= n.project_id).first()
-            project_list.append(projects)
-        request= list(map(lambda project:project.serialize(), project_list))
-        return jsonify(request), 200
-    else:
-        return jsonify({"msg":"No pertenece a ningun projecto"}), 200
+    try:
+        project_list= []
+        id = get_jwt_identity()
+        projectMember= Members.query.filter_by(user_id=id).all()
+        if len(projectMember) > 0:
+            for n in projectMember:
+                projects = Project.query.filter_by(id= n.project_id).first()
+                project_list.append(projects)
+            request= list(map(lambda project:project.serialize(), project_list))
+            return jsonify(request), 200
+        else:
+            return jsonify({"msg":"No pertenece a ningun projecto"}), 200
+    except Exception as e:
+        print(e)
 
+@app.route('/projectmember/<int:project_id>', methods=['GET'])
+@jwt_required()
+def getMemberProjects(project_id):
+    try:
+        members= []
+        projectMember= Members.query.filter_by(project_id=project_id).all()
+        print(projectMember)
+        for n in projectMember:
+            users= User.query.filter_by(id=n.user_id).first()
+            members.append(users)
+        request= list(map(lambda project:project.serialize(), members))
+        return jsonify(request), 200
+
+    except Exception as e:
+        print(e)
 
 @app.route('/profile', methods=['GET'])
 @jwt_required()
@@ -279,7 +297,7 @@ def getProfile():
 @jwt_required()
 def getTasks():
     id = get_jwt_identity()
-    ownerTask = Task.query.filter_by(user_id= id).all()
+    ownerTask = Task.query.filter_by(user_id= id, check_in=False).limit(10).all()
     request= list(map(lambda profiles:profiles.serialize(), ownerTask))    
     return jsonify(request), 200
 
@@ -397,12 +415,6 @@ def handle_task():
                 except Exception as error:
                     db.session.rollback()
                     return jsonify(error.args),500
-            
-
-    
-
-
-
 
 # this only runs if `$ python src/main.py` is executed
 if __name__ == '__main__':
