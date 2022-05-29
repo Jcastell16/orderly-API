@@ -415,13 +415,7 @@ def handleNewTask():
         newTask.start_date = datetime.datetime.utcnow()
         db.session.add(newTask)
         db.session.commit()
-        return jsonify({"msg": "Column was successfully created."}), 200
-
-@app.route('/task/<int:columntask_id>', methods=['GET'])
-def getTask(columntask_id):
-    task = Task.query.filter_by(columntask_id=columntask_id).all()
-    request = list(map(lambda x: x.serialize(), task))
-    return jsonify(request), 200         
+        return jsonify({"msg": "Column was successfully created."}), 200     
 
 # this only runs if `$ python src/main.py` is executed
 if __name__ == '__main__':
