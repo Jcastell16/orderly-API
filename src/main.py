@@ -194,13 +194,13 @@ def handleNewColumn():
 
 @app.route('/column', methods=["DELETE"])
 def handleDeleteColumn():
-    id = request.json.get("id", None)
+    columnid = request.json.get("id", None)
     if id is None:
         return jsonify({"msg": "Please provide a valid column."}), 400
-    DeleteColumn = Columntask.query.filter_by(id=id).first()
+    DeleteColumn = Columntask.query.filter_by(id=columnid).first()
     if DeleteColumn is None:
         return jsonify({"msg": "The Column does not exist!."}), 401
-    tasks = Task.query.filter_by(columntask_id=id).all()
+    tasks = Task.query.filter_by(columntask_id=columnid).all()
     if len(tasks) > 0:
         for n in tasks:
             db.session.delete(n)
@@ -414,26 +414,6 @@ def handle_task():
                 except Exception as error:
                     db.session.rollback()
                     return jsonify(error.args),500
-
-@app.route('/task', methods=["POST"])
-@jwt_required()
-def handleNewTask():
-    user_id = get_jwt_identity()
-    project_id = request.json.get("project_id", None)
-    columntask_id = request.json.get("columntask_id", None)
-    name = request.json.get("name", None)
-    if (name, user_id, project_id, columntask_id) is None:
-        return jsonify({"msg": "Please provide a valid name."}), 400
-    else:
-        newTask = Task()
-        newTask.name = name
-        newTask.project_id = project_id
-        newTask.columntask_id = columntask_id
-        newTask.user_id = user_id
-        newTask.start_date = datetime.datetime.utcnow()
-        db.session.add(newTask)
-        db.session.commit()
-        return jsonify({"msg": "Column was successfully created."}), 200     
 
 # this only runs if `$ python src/main.py` is executed
 if __name__ == '__main__':
