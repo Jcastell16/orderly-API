@@ -1,7 +1,6 @@
 """
 This module takes care of starting the API Server, Loading the DB and Adding the endpoints
 """
-from logging import exception
 import os
 from flask import Flask, request, jsonify, url_for
 from flask_migrate import Migrate
@@ -10,7 +9,7 @@ from flask_jwt_extended import JWTManager, create_access_token, get_jwt_identity
 from flask_cors import CORS
 from utils import APIException, generate_sitemap
 from admin import setup_admin
-from models import Status, db, User, Profile, Project, Members, Roles, Columntask, Task
+from models import Priority, Status, db, User, Profile, Project, Members, Roles, Columntask, Task
 from enum import Enum
 import datetime
 #from models import Person
@@ -163,7 +162,7 @@ def new_project():
 @app.route('/users/<string:email>', methods=['GET'])
 def getUsers(email):
     email = f"%{email}%"
-    users = User.query.filter(User.email.like(email)).limit(3).all()
+    users = User.query.filter(User.email.like(email)).limit(3).all()   
     if users  is None:
         return jsonify({
             "msg":"No hay coincidencia"
@@ -179,9 +178,10 @@ def getColumn(project_id):
     request = list(map(lambda x: x.serialize(), column))
     return jsonify(request), 200
 
-@app.route('/column/<int:project_id>', methods=["POST"])
-def handleNewColumn(project_id):
+@app.route('/column', methods=["POST"])
+def handleNewColumn():
     name = request.json.get("name", None)
+    project_id = request.json.get("project_id", None)
     if name is None:
         return jsonify({"msg": "Please provide a valid name."}), 400
     else:
@@ -194,17 +194,16 @@ def handleNewColumn(project_id):
 
 @app.route('/column', methods=["DELETE"])
 def handleDeleteColumn():
-    id = request.json.get("id", None)
+    columnid = request.json.get("id", None)
     if id is None:
         return jsonify({"msg": "Please provide a valid column."}), 400
-    DeleteColumn = Columntask.query.filter_by(id=id).first()
+    DeleteColumn = Columntask.query.filter_by(id=columnid).first()
     if DeleteColumn is None:
         return jsonify({"msg": "The Column does not exist!."}), 401
-    tasks = Task.query.filter_by(columntask_id=id).all()
+    tasks = Task.query.filter_by(columntask_id=columnid).all()
     if len(tasks) > 0:
         for n in tasks:
             db.session.delete(n)
-
     db.session.delete(DeleteColumn)
     db.session.commit()
     return jsonify({"msg": "Column was successfully delete."}), 200
@@ -254,18 +253,36 @@ def getProfiles():
 @app.route('/projects', methods=['GET'])
 @jwt_required()
 def getProjects():
-    project_list= []
-    id = get_jwt_identity()
-    projectMember= Members.query.filter_by(user_id=id).all()
-    if len(projectMember) > 0:
-        for n in projectMember:
-            projects = Project.query.filter_by(id= n.project_id).first()
-            project_list.append(projects)
-        request= list(map(lambda project:project.serialize(), project_list))
-        return jsonify(request), 200
-    else:
-        return jsonify({"msg":"No pertenece a ningun projecto"}), 200
+    try:
+        project_list= []
+        id = get_jwt_identity()
+        projectMember= Members.query.filter_by(user_id=id).all()
+        if len(projectMember) > 0:
+            for n in projectMember:
+                projects = Project.query.filter_by(id= n.project_id).first()
+                project_list.append(projects)
+            request= list(map(lambda project:project.serialize(), project_list))
+            return jsonify(request), 200
+        else:
+            return jsonify({"msg":"No pertenece a ningun projecto"}), 200
+    except Exception as e:
+        print(e)
 
+@app.route('/projectmember/<int:project_id>', methods=['GET'])
+@jwt_required()
+def getMemberProjects(project_id):
+    try:
+        members= []
+        projectMember= Members.query.filter_by(project_id=project_id).all()
+        print(projectMember)
+        for n in projectMember:
+            users= User.query.filter_by(id=n.user_id).first()
+            members.append(users)
+        request= list(map(lambda project:project.serialize(), members))
+        return jsonify(request), 200
+
+    except Exception as e:
+        print(e)
 
 @app.route('/profile', methods=['GET'])
 @jwt_required()
@@ -279,7 +296,7 @@ def getProfile():
 @jwt_required()
 def getTasks():
     id = get_jwt_identity()
-    ownerTask = Task.query.filter_by(user_id= id).all()
+    ownerTask = Task.query.filter_by(user_id= id, check_in=False).limit(10).all()
     request= list(map(lambda profiles:profiles.serialize(), ownerTask))    
     return jsonify(request), 200
 
@@ -320,7 +337,7 @@ def handle_task():
         name = request.json.get("name", None)
         columntask_id= request.json.get("columntask_id", None)
         if project_id is not None and name is not None and columntask_id is not None:
-            task =Task(name = name, user_id = user_id, project_id = project_id, columntask_id= columntask_id)
+            task =Task(name = name, user_id = user_id, project_id = project_id, columntask_id= columntask_id, start_date=datetime.datetime.utcnow())
             try:
                 db.session.add(task)
                 db.session.commit()
@@ -371,89 +388,24 @@ def handle_task():
             return jsonify("ocurrio un error"), 400
         if not body.get("priority"):
             return jsonify("ocurrio un error"),400
-    
+        if not body.get("due_date"):
+            return jsonify("ocurrio un error"),400
+
+
+
         update_task= Task.query.filter_by(id=body.get("id")).one_or_none()
         print(update_task)
         update_task.description= body.get("description")
         update_task.name=body.get("name")
         update_task.priority= body.get("priority")
+        update_task.due_date= body.get("due_date")
         try:
             db.session.commit()
             return jsonify(update_task.serialize()),201
         except Exception as error:
             db.session.rollback()
             return jsonify(error.args)
-        # id = request.json.get("id", None)
-        # update_task= Task.query.filter_by(id=id).first()
-        # new_task= {}
-        # print(update_task.serialize())
-        # for campo in request.json:
-        #     if request.json[campo]:
-        #         new_task[campo]= request.json[campo]
-        #         # update_task[campo]= request.json.get(campo)
-            
-        # print(update_task.serialize())
-        # update_task.update(new_task)
-        return jsonify([]),200
-
-
-
         
-        # name= request.json.get("name")
-        # columntask_id= request.json.get("columntask_id", None)
-        # project_id= request.json.get("project_id", None)
-        # description= request.json.get("description")
-        # priority= request.json.get("priority") 
-        # if id is None and columntask_id is None and project_id is None:
-        #     return jsonify("ocurrio un error"), 400
-        
-        
-        # if update_task is None:
-        #     return jsonify("ocurrio un error"),400
-        # else:
-        #     if name != "" and description == "" and priority == "":
-        #         try: 
-        #             update_task.name= name
-        #             db.session.add(update_task)
-        #             db.session.commit()
-        #             return jsonify(update_task.serialize()),200
-        #         except Exception as error:
-        #             db.session.rollback()
-        #             return jsonify(error.args), 500
-
-
-        #     if name == "" and description != "" and priority == "":
-        #         try: 
-        #             update_task.description= description
-        #             db.session.add(update_task)
-        #             db.session.commit()
-        #             return jsonify(update_task.serialize()),200
-        #         except Exception as error:
-        #             db.session.rollback()
-        #             return jsonify(error.args),500
-
-
-        #     if name == "" and description == "" and priority !="":
-        #         try:
-        #             update_task.priority = priority
-        #             db.session.add(update_task)
-        #             db.session.commit()
-        #             return jsonify(update_task.serialize()),200
-        #         except Exception as error:
-        #             db.session.rollback()
-        #             return jsonify(error.args),500
-        #     else:
-        #         try:
-        #             update_task.name= name
-        #             update_task.description= description
-        #             update_task.priority= priority
-        #             db.session.add(update_task)
-        #             db.session.commit()
-        #             return jsonify(update_task.serialize()), 200
-        #         except Exception as error:
-        #             db.session.rollback()
-        #             return jsonify(error.args),500
-            
 
     
 

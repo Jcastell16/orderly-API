@@ -146,7 +146,7 @@ class Task(db.Model):
     project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
     columntask_id = db.Column(db.Integer, db.ForeignKey('columntask.id'), nullable=False)
     members_id = db.Column(db.Integer, db.ForeignKey('members.id'), nullable=True)
-    name = db.Column(db.String(50), nullable=False)
+    name = db.Column(db.String(50))
     description = db.Column(db.String(250))
     check_in = db.Column(db.Boolean, default=False)
     due_date = db.Column(db.String(50))
