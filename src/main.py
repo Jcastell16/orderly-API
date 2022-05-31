@@ -311,7 +311,7 @@ def editProfile():
         return  jsonify(error.args)
 
 
-@app.route('/task', methods=['POST', 'GET', 'DELETE', 'PATCH'])
+@app.route('/task', methods=['POST', 'GET', 'DELETE', 'PUT'])
 @jwt_required()
 def handle_task():
     user_id = get_jwt_identity()
@@ -354,49 +354,105 @@ def handle_task():
             db.session.rollback()
             return jsonify(error.args),500
     
-    if request.method == 'PATCH':
-        id = request.json.get("id", None)
-        name= request.json.get("name", "")
-        columntask_id= request.json.get("columntask_id", None)
-        project_id= request.json.get("project_id", None)
-        description= request.json.get("description", "")
-        if id is None and columntask_id is None and project_id is None:
+    if request.method == 'PUT':
+        """
+        verificar los datos del objeto
+        realizar un query a la base de datos si el id de la tarea existe
+        pasar el objeto a la base de datos 
+        crear una instancia del objeto a crear
+        """
+        body= request.json
+        print(body)
+        if not body.get("id"):
             return jsonify("ocurrio un error"), 400
-        update_task= Task.query.filter_by(id=id, user_id=user_id, columntask_id=columntask_id).first()
-        
-        if update_task is None:
+        if not body.get("name"):
             return jsonify("ocurrio un error"),400
-        else:
-            if name != "" and description == "":
-                try: 
-                    update_task.name= name
-                    db.session.add(update_task)
-                    db.session.commit()
-                    return jsonify(update_task.serialize()),200
-                except Exception as error:
-                    db.session.rollback()
-                    return jsonify(error.args), 500
+        if not body.get("description"):
+            return jsonify("ocurrio un error"), 400
+        if not body.get("priority"):
+            return jsonify("ocurrio un error"),400
+    
+        update_task= Task.query.filter_by(id=body.get("id")).one_or_none()
+        print(update_task)
+        update_task.description= body.get("description")
+        update_task.name=body.get("name")
+        update_task.priority= body.get("priority")
+        try:
+            db.session.commit()
+            return jsonify(update_task.serialize()),201
+        except Exception as error:
+            db.session.rollback()
+            return jsonify(error.args)
+        # id = request.json.get("id", None)
+        # update_task= Task.query.filter_by(id=id).first()
+        # new_task= {}
+        # print(update_task.serialize())
+        # for campo in request.json:
+        #     if request.json[campo]:
+        #         new_task[campo]= request.json[campo]
+        #         # update_task[campo]= request.json.get(campo)
+            
+        # print(update_task.serialize())
+        # update_task.update(new_task)
+        return jsonify([]),200
 
 
-            if name == "" and description != "":
-                try: 
-                    update_task.description= description
-                    db.session.add(update_task)
-                    db.session.commit()
-                    return jsonify(update_task.serialize()),200
-                except Exception as error:
-                    db.session.rollback()
-                    return jsonify(error.args),500
-            else:
-                try:
-                    update_task.name= name
-                    update_task.description= description
-                    db.session.add(update_task)
-                    db.session.commit()
-                    return jsonify(update_task.serialize()), 200
-                except Exception as error:
-                    db.session.rollback()
-                    return jsonify(error.args),500
+
+        
+        # name= request.json.get("name")
+        # columntask_id= request.json.get("columntask_id", None)
+        # project_id= request.json.get("project_id", None)
+        # description= request.json.get("description")
+        # priority= request.json.get("priority") 
+        # if id is None and columntask_id is None and project_id is None:
+        #     return jsonify("ocurrio un error"), 400
+        
+        
+        # if update_task is None:
+        #     return jsonify("ocurrio un error"),400
+        # else:
+        #     if name != "" and description == "" and priority == "":
+        #         try: 
+        #             update_task.name= name
+        #             db.session.add(update_task)
+        #             db.session.commit()
+        #             return jsonify(update_task.serialize()),200
+        #         except Exception as error:
+        #             db.session.rollback()
+        #             return jsonify(error.args), 500
+
+
+        #     if name == "" and description != "" and priority == "":
+        #         try: 
+        #             update_task.description= description
+        #             db.session.add(update_task)
+        #             db.session.commit()
+        #             return jsonify(update_task.serialize()),200
+        #         except Exception as error:
+        #             db.session.rollback()
+        #             return jsonify(error.args),500
+
+
+        #     if name == "" and description == "" and priority !="":
+        #         try:
+        #             update_task.priority = priority
+        #             db.session.add(update_task)
+        #             db.session.commit()
+        #             return jsonify(update_task.serialize()),200
+        #         except Exception as error:
+        #             db.session.rollback()
+        #             return jsonify(error.args),500
+        #     else:
+        #         try:
+        #             update_task.name= name
+        #             update_task.description= description
+        #             update_task.priority= priority
+        #             db.session.add(update_task)
+        #             db.session.commit()
+        #             return jsonify(update_task.serialize()), 200
+        #         except Exception as error:
+        #             db.session.rollback()
+        #             return jsonify(error.args),500
             
 
     
