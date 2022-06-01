@@ -51,17 +51,17 @@ def handle_hello():
 
 @app.route("/register", methods=["POST"])
 def register_user():
-    email = request.json.get("email", None)
-    password = request.json.get("password", None)
-    name = request.json.get("name", None)
-    lastname = request.json.get("lastname", None)
-    if email is None:
+    email = request.json.get("email")
+    password = request.json.get("password")
+    name = request.json.get("name")
+    lastname = request.json.get("lastname")
+    if len(email) == 0:
         return jsonify("Please provide a valid email."), 400
-    if password is None:
+    if len(password) == 0:
         return jsonify("Please provide a valid password."), 400
-    if name is None:
+    if len(name) == 0:
         return jsonify("Please provide a valid name."), 400
-    if lastname is None:
+    if len(lastname) == 0:
         return jsonify("Please provide a valid lastname."), 400
     user = User.query.filter_by(email=email).first()
     if user:
@@ -112,11 +112,11 @@ def handle_login():
 @app.route('/newproject', methods=['POST'])
 @jwt_required()
 def new_project():
-    name = request.json.get("name", None)
+    name = request.json.get("name")
     due_date = request.json.get("due_date")
     description = request.json.get("description")
     members = request.json.get("members")
-    if name is None:
+    if len(name) == 0:
         return jsonify("Please provide a valid name."), 400
     else:
         id= get_jwt_identity()
@@ -143,10 +143,6 @@ def new_project():
             member.project_id = newProject.id
             memberuser = User.query.filter_by(email=n["email"]).first()
             member.user_id = memberuser.id
-            if n["rol"]== "Usuario":
-                member.rol = Roles.USUARIO
-            else:
-                member.rol = Roles.ADMINISTRADOR
             
             db.session.add(member)
             db.session.commit()
