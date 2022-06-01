@@ -311,18 +311,27 @@ def editProfile():
     gender = request.json.get("gender")
 
     profile_update = Profile.query.filter_by(user_id=id).first()
+    print(name, lastname, description)
     if profile_update is None:
         return jsonify({"msg":"Profile not found"}), 404
     try:
         if name is not None and lastname is not None:
             profile_update.name = name  
             profile_update.lastname = lastname
-        else:
             profile_update.description = description
             profile_update.photo = photo
             profile_update.gender = gender
+            db.session.add(profile_update)
             db.session.commit()
-            return jsonify(profile_update.serialize()), 200
+        else:
+            profile_update.name = profile_update.name  
+            profile_update.lastname = profile_update.lastname
+            profile_update.description = description
+            profile_update.photo = photo
+            profile_update.gender = gender
+            db.session.add(profile_update)
+            db.session.commit()
+        return jsonify(profile_update.serialize()), 200
     except Exception as error:
         db.session.rollback()
         return  jsonify(error.args)
