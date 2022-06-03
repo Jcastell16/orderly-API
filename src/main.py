@@ -395,15 +395,20 @@ def handle_task():
             return jsonify("ocurrio un error"),400
         if not body.get("due_date"):
             return jsonify("ocurrio un error"),400
-
-
+        if not body.get("column"):
+            return jsonify("ocurrio un error"),400
+        
 
         update_task= Task.query.filter_by(id=body.get("id")).one_or_none()
         print(update_task)
         update_task.description= body.get("description")
         update_task.name=body.get("name")
         update_task.priority= body.get("priority")
-        update_task.due_date= body.get("due_date")
+        if body.get("due_date") != "":
+            update_task.due_date= body.get("due_date")
+        else:
+            update_task.due_date= update_task.due_date 
+        update_task.columntask_id= body.get("column")
         try:
             db.session.commit()
             return jsonify(update_task.serialize()),201
